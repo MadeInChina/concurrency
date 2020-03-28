@@ -367,6 +367,7 @@ public class ReentrantReadWriteLock
          * condition wait and re-established in tryAcquire.
          */
 
+        @Override
         protected final boolean tryRelease(int releases) {
             if (!isHeldExclusively())
                 throw new IllegalMonitorStateException();
@@ -378,6 +379,7 @@ public class ReentrantReadWriteLock
             return free;
         }
 
+        @Override
         protected final boolean tryAcquire(int acquires) {
             /*
              * Walkthrough:

@@ -494,10 +494,11 @@ public abstract class AbstractQueuedSynchronizer
          */
         final Node predecessor() throws NullPointerException {
             Node p = prev;
-            if (p == null)
+            if (p == null) {
                 throw new NullPointerException();
-            else
+            } else {
                 return p;
+            }
         }
 
         Node() {    // Used to establish initial head or SHARED marker
@@ -519,17 +520,20 @@ public abstract class AbstractQueuedSynchronizer
      * initialization, it is modified only via method setHead.  Note:
      * If head exists, its waitStatus is guaranteed not to be
      * CANCELLED.
+     * 等待队列的头节点
      */
     private transient volatile Node head;
 
     /**
      * Tail of the wait queue, lazily initialized.  Modified only via
      * method enq to add new wait node.
+     * 等待队列的尾节点
      */
     private transient volatile Node tail;
 
     /**
      * The synchronization state.
+     * 同步资源状态
      */
     private volatile int state;
 
@@ -577,19 +581,42 @@ public abstract class AbstractQueuedSynchronizer
     static final long spinForTimeoutThreshold = 1000L;
 
     /**
+     * 加入CLH队列
      * Inserts node into queue, initializing if necessary. See picture above.
      * @param node the node to insert
      * @return node's predecessor
      */
     private Node enq(final Node node) {
+        /*
+        自旋
+         */
         for (;;) {
             Node t = tail;
+            /*
+            如果尾节点是空,那么必须先初始化头节点和尾节点
+             */
             if (t == null) { // Must initialize
-                if (compareAndSetHead(new Node()))
+                /*
+                CAS把头节点设置成一个新的空Node
+                 */
+                if (compareAndSetHead(new Node())) {
+                    /*
+                    尾节点指向头部节点
+                     */
                     tail = head;
+                }
             } else {
+                /*
+                 如果尾节点不为空那么把当前节点插入尾节点
+                 */
                 node.prev = t;
+                /*
+                CAS的方式把当前节点插入同步队列的尾部,有可能失败
+                */
                 if (compareAndSetTail(t, node)) {
+                    /*
+                     把之前尾节点的next指针指向当前节点
+                     */
                     t.next = node;
                     return t;
                 }
@@ -604,16 +631,37 @@ public abstract class AbstractQueuedSynchronizer
      * @return the new node
      */
     private Node addWaiter(Node mode) {
+        /*
+        把当前线程转换成Node类型
+         */
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
         Node pred = tail;
+        /*
+        尾节点如果不为空
+         */
         if (pred != null) {
+            /*
+            那么把当前节点插入尾节点
+             */
             node.prev = pred;
+            /*
+            CAS的方式把当前节点插入同步队列的尾部,有可能失败
+             */
             if (compareAndSetTail(pred, node)) {
+                /*
+                把之前尾节点的next指针指向当前节点
+                 */
                 pred.next = node;
+                /*
+                返回当前Node
+                 */
                 return node;
             }
         }
+        /*
+        如果尾节点为空,或者上一步compareAndSetTail(pred, node)失败,再次尝试把当前节点添加到同步队列
+         */
         enq(node);
         return node;
     }
@@ -860,7 +908,13 @@ public abstract class AbstractQueuedSynchronizer
         try {
             boolean interrupted = false;
             for (;;) {
+                /*
+                 获取node的前驱节点
+                 */
                 final Node p = node.predecessor();
+                /*
+                如果前驱节点和头节点相等并且获取锁成功
+                 */
                 if (p == head && tryAcquire(arg)) {
                     setHead(node);
                     p.next = null; // help GC
@@ -868,12 +922,14 @@ public abstract class AbstractQueuedSynchronizer
                     return interrupted;
                 }
                 if (shouldParkAfterFailedAcquire(p, node) &&
-                    parkAndCheckInterrupt())
+                    parkAndCheckInterrupt()) {
                     interrupted = true;
+                }
             }
         } finally {
-            if (failed)
+            if (failed) {
                 cancelAcquire(node);
+            }
         }
     }
 
@@ -1196,9 +1252,16 @@ public abstract class AbstractQueuedSynchronizer
      *        can represent anything you like.
      */
     public final void acquire(int arg) {
+        /*
+        如果尝试获取锁失败
+        并且
+        尝试入队列成功(Node.EXCLUSIVE为独占模式)
+        表示当前线程进入中断状态.
+         */
         if (!tryAcquire(arg) &&
-            acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
             selfInterrupt();
+        }
     }
 
     /**
@@ -1514,9 +1577,24 @@ public abstract class AbstractQueuedSynchronizer
         // The correctness of this depends on head being initialized
         // before tail and on head.next being accurate if the current
         // thread is first in queue.
+        /*
+        尾节点
+         */
         Node t = tail; // Read fields in reverse initialization order
+        /*
+        头节点
+         */
         Node h = head;
         Node s;
+        /*
+        如果
+          头结点和尾节点不同
+         并且
+          (头节点的next为空
+          或者
+          next的线程不是当前线程)
+          则代表当前队列不为空,有其他线程排在当前线程之前
+         */
         return h != t &&
             ((s = h.next) == null || s.thread != Thread.currentThread());
     }
