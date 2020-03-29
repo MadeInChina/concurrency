@@ -165,6 +165,9 @@ public class ReentrantLock implements Lock, java.io.Serializable {
                 throw new IllegalMonitorStateException();
             }
             boolean free = false;
+            /*
+            释放锁资源成功
+             */
             if (c == 0) {
                 free = true;
                 setExclusiveOwnerThread(null);
@@ -173,6 +176,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             return free;
         }
 
+        @Override
         protected final boolean isHeldExclusively() {
             // While we must in general read state before owner,
             // we don't need to do so to check if current thread is owner
@@ -375,6 +379,9 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * @throws InterruptedException if the current thread is interrupted
      */
     public void lockInterruptibly() throws InterruptedException {
+        /*
+        如果当前线程没有被终端尝试获取锁
+         */
         sync.acquireInterruptibly(1);
     }
 
@@ -496,6 +503,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * @throws IllegalMonitorStateException if the current thread does not
      *         hold this lock
      */
+    @Override
     public void unlock() {
         sync.release(1);
     }
